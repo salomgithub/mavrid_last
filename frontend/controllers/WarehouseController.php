@@ -2,15 +2,19 @@
 
 namespace frontend\controllers;
 
+use frontend\models\Materials;
 use frontend\models\Orders;
 use frontend\models\Qoldiq;
 use frontend\models\Tovar;
+use frontend\models\WarehouseInput;
 use frontend\models\Warehouseout;
+use frontend\models\WarehouseOutput;
 use frontend\models\WarehouseoutSearch;
 use Yii;
 use frontend\models\Warehouse;
 use frontend\models\WarehouseSearch;
 use yii\db\Query;
+use yii\helpers\ArrayHelper;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
@@ -35,210 +39,164 @@ class WarehouseController extends Controller
         ];
     }
 
+    public $layout = 'warehouse';
+
     public function actionIndex()
     {
-        $searchModel = new WarehouseSearch();
-        $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
+        // Yii2 Active Record query
+        $data_monitoring = (new \yii\db\Query())
+            ->select([
+                'rm.name AS material_name',
+                'rm.color AS color',
+                'total_in',
+                'total_out',
+                'total_stock',
+                'w.updated_at',
+            ])
+            ->from('warehouse w')
+            ->innerJoin('materials rm', 'w.material_id = rm.id')
+            ->orderBy(['created_at' => SORT_ASC])
+            ->all();
+
+        $data_in = WarehouseInput::find()->orderBy(['created_at' => SORT_DESC])->limit(20)->all();
+        $data_out = WarehouseOutput::find()->orderBy(['created_at' => SORT_DESC])->limit(20)->all();
+        $materialsItems = (new \yii\db\Query())
+            ->select([
+                'w.material_id AS id',
+                'rm.name AS name',
+            ])
+            ->from('materials rm')
+            ->where(['>', 'w.total_stock', 0])
+            ->innerJoin('warehouse w', 'rm.id = w.material_id')
+            ->groupBy(['w.material_id']) // Group by material_id to avoid duplicates
+            ->all();
+        $materialsList = ArrayHelper::map($materialsItems, 'id', 'name');
+        $matretialsParams = [
+            'prompt' => 'Укажите Tovar',
+        ];
+
+        $tovars = Materials::find()->all();
+        $tovars = ArrayHelper::map($tovars, 'id', 'name');
+
+        $model_input = new WarehouseInput();
+        $model_output = new WarehouseOutput();
+        $model_add_tovar = new Materials();
 
         return $this->render('index', [
-            'searchModel' => $searchModel,
-            'dataProvider' => $dataProvider,
+            'data_monitoring' => $data_monitoring,
+            'data_in' => $data_in,
+            'data_out' => $data_out,
+            'materialsList' => $materialsList,
+            'tovars' => $tovars,
+            'model' => $model,
+            'model_input' => $model_input,
+            'model_output' => $model_output,
+            'model_add_tovar' => $model_add_tovar,
         ]);
     }
-    public function actionIndexout()
-    {
-        $searchModel = new WarehouseoutSearch();
-        $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
 
-        return $this->render('indexout', [
-            'searchModel' => $searchModel,
-            'dataProvider' => $dataProvider,
-        ]);
-    }
-    public function actionIndexin()
+    public function actionAddNewTovar()
     {
-        $searchModel = new WarehouseSearch();
-        $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
-
-        return $this->render('indexin', [
-            'searchModel' => $searchModel,
-            'dataProvider' => $dataProvider,
-        ]);
-    }
-    public function actionView($id)
-    {
-        return $this->render('view', [
-            'model' => $this->findModel($id),
-        ]);
-    }
-    public function actionViewout($id)
-    {
-        return $this->render('viewout', [
-            'model' => $this->findModelout($id),
-        ]);
-    }
-    public function actionCreate()
-    {
-        $model = new Warehouse();
+        $model = new Materials();
 
         if ($model->load(Yii::$app->request->post()) && $model->save()) {
-
-            return $this->redirect(['view', 'id' => $model->id]);
+            return $this->actionIndex();
         }
-
 
         return $this->render('create', [
             'model' => $model,
         ]);
     }
 
-    public function actionCreate_tovar()
+    public function actionKirim()
     {
-        $model = new Warehouseout();
-
-        if ($model->load(Yii::$app->request->post()) ) {
-            $qoldiq = Qoldiq::findOne(['tovar_id'=>$model->tovar_id]);
-            $qoldiq_id = $qoldiq->id;
-            if (empty($qoldiq_id) ){
-                $query = new Qoldiq();
-                $query->tovar_id = $model->tovar_id;
-                $query->soni = $model->soni;
-
-                if ($query->save() && $model->save()){
-                    return $this->redirect(['viewout', 'id' => $model->id]);
-                }
-
-            }else {
-                $qoldiq = Qoldiq::findOne($qoldiq_id);
-                $qoldiq->soni = $qoldiq->soni + $model->soni;
-                if ($qoldiq->save() && $model->save()){
-                    return $this->redirect(['viewout', 'id' => $model->id]);
-                }
-
-                return $this->render('update', [
-                    'model' => $model,
-                ]);
-            }
-            return $this->redirect(['viewout', 'id' => $model->id]);
-        }
-        return $this->render('create_tovar', [
-            'model' => $model,
-        ]);
-    }
-//    public function actionCreate_tovar()
-//    {
-//        $model = new Warehouseout();
-//
-//        if ($model->load(Yii::$app->request->post()) && $model->save()) {
-//            return $this->redirect(['viewout', 'id' => $model->id]);
-//        }
-//        return $this->render('create_tovar', [
-//            'model' => $model,
-//        ]);
-//    }
-    public function actionCreate_order()
-    {
-        $model = new Warehouse();
-        if ($model->load(Yii::$app->request->post()) ) {
-            $qoldiq = Qoldiq::findOne(['tovar_id'=>$model->tovar_id]);
-            $qoldiq_id = $qoldiq->id;
-            $order_soni = Orders::findOne($model->order_id);
-            $order_soni = $order_soni->soni;
-
-            $online_soni = Warehouse::find()->where(['order_id'=>$model->order_id])->sum('soni');
-            $kirim_soni  = $model->soni;
-            // var_dump("avval kiritilganlar soni =".$online_soni." ---"." hozir kirilitgani = ".$kirim_soni." order".$order_soni);
-
-//            die();
-
-            if ($kirim_soni <= ($order_soni- $online_soni)) {
-
-
-                if (empty($qoldiq_id)) {
-                    $query = new Qoldiq();
-                    $query->tovar_id = $model->tovar_id;
-                    $query->soni = $model->soni;
-                    $query->save();
-                    if ($query->save() && $model->save()) {
-                        return $this->redirect(['view', 'id' => $model->id]);
-                    }
-                } else {
-                    $qoldiq = Qoldiq::findOne($qoldiq_id);
-                    $qoldiq->soni = $qoldiq->soni + $model->soni;
-                    if ($qoldiq->save() && $model->save()) {
-                        return $this->redirect(['view', 'id' => $model->id]);
-                    }
-                    return $this->render('update', [
-                        'model' => $model,
-                    ]);
-                }
-            }
-            else $xato = "Miqdor buyurtmadan ortgan ";
-
-//            return $this->redirect(['view', 'id' => $model->id]);
-        }
-
-        return $this->render('create_order', [
-            'model' => $model,
-            'xato' => $xato,
-        ]);
-    }
-
-    public function actionListtovar($id)
-    {
-        $tovars = Orders::findOne($id);
-        $tovar_id = $tovars->tovar_id;
-
-        $tovar_name = Tovar::findOne($tovar_id);
-        $tovar_name = $tovar_name->name;
-
-
-        echo "<option  value='".$tovar_id."'>".$tovar_name."</option>";
-
-    }
-
-    /**
-     * Updates an existing Warehouse model.
-     * If update is successful, the browser will be redirected to the 'view' page.
-     * @param integer $id
-     * @return mixed
-     * @throws NotFoundHttpException if the model cannot be found
-     */
-    public function actionUpdate($id)
-    {
-        $model = $this->findModel($id);
+        $model = new WarehouseInput();
+        $materials = ArrayHelper::map(Materials::find()->all(), 'id', 'name');
 
         if ($model->load(Yii::$app->request->post()) && $model->save()) {
-            return $this->redirect(['view', 'id' => $model->id]);
+
+            $warehouse = Warehouse::find()->where(['material_id' => $model->material_id])->one();
+
+            if ($warehouse) {
+                // Agar material_id mavjud bo'lsa, mavjud yozuvni yangilash
+                $warehouse->total_stock += $model->quantity;
+                $warehouse->total_in += $model->quantity;
+
+                // Yangilanishni saqlash
+                if (!$warehouse->save()) {
+                    Yii::$app->session->setFlash('error', 'Warehouse ma\'lumotlari yangilanishida xatolik yuz berdi.');
+                }else {return $this->redirect(['index']);}
+            } else {
+                // Agar material_id mavjud bo'lmasa, yangi yozuv qo'shish
+                $warehouse = new Warehouse();
+                $warehouse->material_id = $model->material_id;
+                $warehouse->color = Materials::findOne($model->material_id)->color;
+                $warehouse->total_stock = $model->quantity;
+                $warehouse->total_in = $model->quantity;
+
+                if (!$warehouse->save()) {
+                    Yii::$app->session->setFlash('error', 'Warehouse ma\'lumotlari saqlanmadı.');
+                }
+
+                return $this->actionIndex();
+            }
+        }
+        return $this->actionIndex();
+    }
+
+    public function actionChiqim()
+    {
+        $model = new WarehouseOutput();
+
+        // Tranzaksiyani boshlash
+        $transaction = Yii::$app->db->beginTransaction();
+
+        try {
+            if ($model->load(Yii::$app->request->post())) {
+                $warehouse = Warehouse::findOne(['material_id' => $model->material_id]);
+
+                if ($warehouse->total_stock >= $model->quantity && $model->save()) {
+
+                        $transaction->commit();
+                        return $this->redirect(['index']);
+
+                } else {
+                    var_dump($model->errors);
+                    die("Ma\'lumotlar saqlanmadi yoki omborda yetarlicha tovar mavjud emas!");
+                }
+            }
+        } catch (\Exception $e) {
+
+            // Agar biron-bir xato yuz bersa, tranzaksiyani bekor qilish
+            $transaction->rollBack();
+            Yii::$app->session->setFlash('error', $e->getMessage());
         }
 
-        return $this->render('update', [
+        $materialsItems = (new \yii\db\Query())
+            ->select([
+                'w.material_id AS id',
+                'rm.name AS name',
+            ])
+            ->from('materials rm')
+            ->where(['>', 'w.total_stock', 0])
+            ->innerJoin('warehouse w', 'rm.id = w.material_id')
+            ->groupBy(['w.material_id']) // Group by material_id to avoid duplicates
+            ->all();
+        $materialsList = ArrayHelper::map($materialsItems, 'id', 'name');
+        $matretialsParams = [
+            'prompt' => 'Укажите Tovar',
+        ];
+        $materials = ArrayHelper::map(Materials::find()->all(), 'id', 'name');
+
+        return $this->render('create', [
             'model' => $model,
+            'materialsList' => $materialsList,
+            'matretialsParams' => $matretialsParams,
         ]);
+
     }
 
-    /**
-     * Deletes an existing Warehouse model.
-     * If deletion is successful, the browser will be redirected to the 'index' page.
-     * @param integer $id
-     * @return mixed
-     * @throws NotFoundHttpException if the model cannot be found
-     */
-    public function actionDelete($id)
-    {
-        $this->findModel($id)->delete();
-
-        return $this->redirect(['index']);
-    }
-
-    /**
-     * Finds the Warehouse model based on its primary key value.
-     * If the model is not found, a 404 HTTP exception will be thrown.
-     * @param integer $id
-     * @return Warehouse the loaded model
-     * @throws NotFoundHttpException if the model cannot be found
-     */
-    protected function findModel($id)
+    function findModel($id)
     {
         if (($model = Warehouse::findOne($id)) !== null) {
             return $model;
@@ -246,12 +204,6 @@ class WarehouseController extends Controller
 
         throw new NotFoundHttpException('The requested page does not exist.');
     }
-    protected function findModelout($id)
-    {
-        if (($model = Warehouseout::findOne($id)) !== null) {
-            return $model;
-        }
 
-        throw new NotFoundHttpException('The requested page does not exist.');
-    }
+
 }
