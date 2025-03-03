@@ -5,26 +5,27 @@ namespace frontend\models;
 use Yii;
 
 /**
- * This is the model class for table "warehouse".
+ * This is the model class for table "warehouse_output".
  *
  * @property int $id
  * @property int $material_id
- * @property string|null $color
- * @property float $total_stock
- * @property float $total_in
- * @property float|null $total_out
- * @property string $updated_at
+ * @property float $quantity
+ * @property string $date_of_exit
+ * @property string|null $destination
+ * @property string|null $comments
+ * @property string|null $created_at
+ * @property string|null $updated_at
  *
  * @property Materials $material
  */
-class Warehouse extends \yii\db\ActiveRecord
+class WarehouseOutput extends \yii\db\ActiveRecord
 {
     /**
      * {@inheritdoc}
      */
     public static function tableName()
     {
-        return 'warehouse';
+        return 'warehouse_output';
     }
 
     /**
@@ -33,11 +34,12 @@ class Warehouse extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['material_id'], 'required'],
+            [['material_id', 'quantity', 'date_of_exit'], 'required'],
             [['material_id'], 'integer'],
-            [['total_stock', 'total_in', 'total_out'], 'number'],
-            [['updated_at'], 'safe'],
-            [['color'], 'string', 'max' => 50],
+            [['quantity'], 'number'],
+            [['date_of_exit', 'created_at', 'updated_at'], 'safe'],
+            [['comments'], 'string'],
+            [['destination'], 'string', 'max' => 255],
             [['material_id'], 'exist', 'skipOnError' => true, 'targetClass' => Materials::className(), 'targetAttribute' => ['material_id' => 'id']],
         ];
     }
@@ -49,11 +51,12 @@ class Warehouse extends \yii\db\ActiveRecord
     {
         return [
             'id' => 'ID',
-            'material_id' => 'Material ID',
-            'color' => 'Color',
-            'total_stock' => 'Total Stock',
-            'total_in' => 'Total In',
-            'total_out' => 'Total Out',
+            'material_id' => 'Mahsulot nomi',
+            'quantity' => 'Soni',
+            'date_of_exit' => 'Chiqim sanasi',
+            'destination' => 'Qayerga',
+            'comments' => 'tarif',
+            'created_at' => 'Created At',
             'updated_at' => 'Updated At',
         ];
     }

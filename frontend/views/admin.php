@@ -7,11 +7,11 @@ use yii\helpers\Html;
 use yii\bootstrap\Nav;
 use yii\bootstrap\NavBar;
 use yii\widgets\Breadcrumbs;
-use frontend\assets\OylikAsset;
+use frontend\assets\AppAsset;
 use common\widgets\Alert;
 use mdm\admin\components\Helper;
 
-OylikAsset::register($this);
+AppAsset::register($this);
 ?>
 <?php $this->beginPage() ?>
 <!DOCTYPE html>
@@ -30,25 +30,30 @@ OylikAsset::register($this);
 <div class="wrap">
     <?php
     NavBar::begin([
-        'brandLabel' => 'OMBORXONA ',
+        'brandLabel' => 'M A V R I D ',
         'brandUrl' => Yii::$app->homeUrl,
         'options' => [
             'class' => 'navbar-inverse navbar-fixed-top',
         ],
     ]);
     $menuItems = [
-        ['label' => 'Asosiy', 'url' => ['/warehouse/index']],
-        ['label' => 'Kirim qilish', 'url' => ['/warehouse-input/create']],
-        ['label' => 'Chiqim qilish', 'url' => ['/warehouse-output/create']],
-        ['label' => 'Kirimlar', 'url' => ['/warehouse-input/index']],
-        ['label' => 'Chiqimlar', 'url' => ['/warehouse-output/index']],
-        ['label' => 'Mahsulotlar', 'url' => ['/materials/index']],
-        ['label' => 'Bichish', 'url' => ['/bichish/index']],
-//        ['label' => 'Omborxona', 'url' => ['/warehouse-/index']],
+        ['label' => 'Hodimlar', 'url' => ['/employees/index']],
+        ['label' => 'User', 'url' => ['/admin/user/signup']],
+        ['label' => 'Tovar', 'url' => ['/tovar/index']],
+//        ['label' => 'Ranglar', 'url' => ['/color/index']],
+//        ['label' => 'O`lchamlar', 'url' => ['/size/index']],
+        ['label' => 'Operatsiyalar', 'url' => ['/code/index']],
+        ['label' => 'Buyurtmalar', 'url' => ['/orders/index']],
+        ['label' => 'Jarayonlar', 'url' => ['/worker/index']],
+        ['label' => 'Buxgalteriya ', 'url' => ['/date/index']],
+        ['label' => 'Omborxona ', 'url' => ['/qoldiq/index']],
+        ['label' => 'Hisobotlar ', 'url' => ['/report/index']],
+//        ['label' => 'Omborxona', 'url' => ['/warehouse/index']],
+//        ['label' => 'Statistika', 'url' => ['/oylik/index']],
     ];
     if (Yii::$app->user->isGuest) {
         // $menuItems[] = ['label' => 'Signup', 'url' => ['/site/signup']];
-        $menuItems[] = ['label' => 'Login', 'url' => ['/site/login']];
+         $menuItems[] = ['label' => 'Login', 'url' => ['/site/login']];
     } else {
         $menuItems[] = '<li>'
             . Html::beginForm(['/site/logout'], 'post')
@@ -67,7 +72,7 @@ OylikAsset::register($this);
     NavBar::end();
     ?>
 
-    <div class="">
+    <div class="container">
         <?= Breadcrumbs::widget([
             'links' => isset($this->params['breadcrumbs']) ? $this->params['breadcrumbs'] : [],
         ]) ?>
@@ -76,8 +81,15 @@ OylikAsset::register($this);
     </div>
 </div>
 
+<!-- <footer class="footer">
+    <div class="container">
+        <p class="pull-left">&copy; <?= Html::encode(Yii::$app->name) ?> <?= date('Y') ?></p>
+
+        <p class="pull-right"><?= Yii::powered() ?></p>
+    </div>
+</footer> -->
+
 <?php $this->endBody() ?>
 </body>
 </html>
 <?php $this->endPage() ?>
-a

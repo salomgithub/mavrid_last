@@ -1,131 +1,365 @@
 <?php
 
+use frontend\models\WarehouseInput;
+use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
-use yii\grid\GridView;
+use yii\widgets\ActiveForm;
+use yii\bootstrap\Modal;
 
-/* @var $this yii\web\View */
-/* @var $searchModel frontend\models\WarehouseSearch */
-/* @var $dataProvider yii\data\ActiveDataProvider */
-
-$this->title = 'Omborxona';
-$this->params['breadcrumbs'][] = $this->title;
 ?>
-<div class="warehouse-index">
+<style>
+    /* Umumiy konteyner grid */
+    .container-grid {
+        display: grid;
+        grid-template-rows: 1fr 1fr; /* Monitoring yuqori va kirim-chiqim pastki qism */
+        height: 100vh; /* Sahifaning butun balandligini qoplaydi */
+        grid-template-columns: 1fr 1fr; /* Kirim va chiqim qismlarini yonma-yon qilish */
+    }
 
-    <h1><?= Html::encode($this->title) ?></h1>
+    /* Monitoring qismi */
+    .monitoring {
+        grid-column: 1 / 3; /* Monitoring qismi ikkala ustunni ham qoplaydi */
+        background-color: #f8f9fa;
+        padding: 15px;
+        height: 50vh; /* Monitoring qismi balandligi */
+        resize: vertical; /* Vertikal o'lchamni o'zgartirish imkoniyati */
+        overflow: auto;
+    }
 
-    <p>
-        <?= Html::a(' + Bozordan qabul qilish', ['create_tovar'], ['class' => 'btn btn-success']) ?>
-        <?= Html::a(' + Ishchilardan qabul qilish', ['create_order'], ['class' => 'btn btn-success']) ?>
-        <?= Html::a('Barcha mavriddan kelgan tovarlar', ['indexin'], ['class' => 'btn btn-primary']) ?>
-        <?= Html::a('tashqaridan kelgan tovarlar', ['indexout'], ['class' => 'btn btn-primary']) ?>
-    </p>
-    <pre>
-        <?php
-        $report_in = \frontend\models\Warehouse::find()->asArray()->all();
-        $report_out = \frontend\models\Warehouseout::find()->asArray()->all();
-        var_dump($report_in);
-        echo "<br>";
-        echo "<br>";
-        var_dump($report_out);
-        foreach ($report_in as $item) {
-            $report_out[] = $item;
-        }
-//        $report_out += $report_in;
-        echo "<br>";
-        echo "<br>";
-        echo "<br>";
-        echo "<br>";
-        usort($report_out, function($a, $b) {
-            return strtotime($a['create_data']) - strtotime($b['create_data']);
-        });
-        var_dump($report_out);
-echo "<table>";
-echo "<tr><th>ID</th><th>Order ID</th><th>Tovar ID</th><th>Soni</th><th>Create Data</th></tr>";
+    /* Kirim va Chiqim qismlari */
+    .kirim, .chiqim {
+        padding: 15px;
+        resize: vertical; /* Har birini mustaqil vertikal o'zgartirish */
+        overflow: auto;
+        min-height: 50%; /* Minimal balandlik 50% */
+        height: auto;
+        box-sizing: border-box;
+    }
 
-// Massivdagi har bir element uchun qatorlarni chiqarish
-foreach ($report_out as $item) {
-    echo "<tr>";
-    echo "<td>" . $item['id'] . "</td>";
-    if (empty($item['order_id'])) $item['order_id'] = 'tashqaridan kirgan tovar';
-    echo "<td>" . $item['order_id']. "</td>";
-    echo "<td>" . $item['tovar_id'] . "</td>";
-    echo "<td>" . $item['soni'] . "</td>";
-    echo "<td>" . $item['create_data'] . "</td>";
-    echo "</tr>";
-}
-        ?>
+    /* Kirim chap tomonda */
+    .kirim {
+        grid-column: 1 / 2;
+        background-color: #e9ecef;
+    }
 
+    /* Chiqim o'ng tomonda */
+    .chiqim {
+        grid-column: 2 / 3;
+        background-color: #dee2e6;
+    }
 
-    </pre>
-    <table id="example" class="kv-grid-table table table-bordered table-striped kv-table-wrap">
-        <tr class="w5">
-            <td align="center" ><b>Hodim ID</td>
-            <td align="center" ><b>Umumiy hisoblangan summa</td>
-            <td align="center" ><b>Umumiy hisoblangan operatsiyalar soni</td>
-        </tr>
+    /* Jadval */
+    table {
+        width: 100%;
+        margin-bottom: 15px;
+    }
 
-        <?php if (isset($query)): ?>
-            <?php foreach ($query as $key ): ?>
-                <tr class="w5">
-                    <?php $tartib_raqam = 0; ?>
-                    <?php foreach ($key as $i ): ?>
-                        <td align="right" >
-                            <?php $tartib_raqam++;
-
-                            if ($tartib_raqam == 1) {
-                                $employee = Employees::findOne($i);
-                                $firstname = $employee->firstname;
-                                $lastname = $employee->lastname;
-                                $namefather = $employee->namefather;
-                                $name = $firstname." ".$lastname." ".$namefather;
-                                $i = $name;
-
-                            }else
-                                $i= number_format("$i");
-
-                            echo $i;
-                            ?>
-
-                        </td>
-
-                    <?php endforeach ?>
+    /* Resize uchun belgi */
+    .resize-handle {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 20px;
+        height: 20px;
+        background: #ccc;
+        cursor: se-resize;
+    }
+</style>
+<br>
+<div class="container-grid">
+    <!-- Monitoring qismi -->
+    <div class="monitoring">
+        <h2>Monitoring</h2>
+        <table class="table table-bordered">
+            <thead>
+            <tr>
+                <th>№</th>
+                <th>Mahsulot nomi</th>
+                <th>Rangi</th>
+                <th>Jami kirim</th>
+                <th>Jami chiqim</th>
+                <th>Qolgan miqdor</th>
+                <th>Oxirgi o'zgarish</th>
+            </tr>
+            </thead>
+            <tbody>
+                <?php $i=1;?>
+            <?php foreach ($data_monitoring as $row): ?>
+                <tr>
+                    <td><?echo $i; $i++;?></td>
+                    <td><?= $row['material_name'] ?></td>
+                    <td><?= $row['color'] ?></td>
+                    <td><?= $row['total_in'] ?></td>
+                    <td><?= $row['total_out'] ?></td>
+                    <td><?= $row['total_stock'] ?></td>
+                    <td><?= $row['updated_at'] ?></td>
                 </tr>
-            <?php endforeach ?>
-        <?php endif ?>
-    </table>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Kirim qismi -->
+    <div class="kirim">
+        <p style="font-size:35px; margin: -5px -5px -3px  ">Kirimlar
+            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myModalKirim">
+                +
+            </button>
+
+            <?= Html::a('batafsil', ['warehouse-input/index'], ['class' => 'btn btn-info']) ?>
+        </p>
+        <table class="table table-bordered">
+            <thead>
+            <tr>
+                <th>№</th>
+                <th>Mahsulot nomi</th>
+                <th>Miqdor</th>
+                <th>Operatsiya vaqti</th>
+            </tr>
+            </thead>
+            <tbody>
+                 <?php $i=1;?>
+            <?php foreach ($data_in as $row): ?>
+                <tr>
+                    <td><?echo $i; $i++;?></td>
+                    <td><?= \frontend\models\Materials::findOne($row->material_id)->name ?></td>
+                    <td><?= $row->quantity ?></td>
+                    <td><?= $row->created_at ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Chiqim qismi -->
+    <div class="chiqim">
+        <p style="font-size:35px; margin: -5px -5px -3px  ">Chiqimlar
+            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myModalChiqim">
+                --
+            </button>
+
+            <?= Html::a('batafsil', ['warehouse-output/index'], ['class' => 'btn btn-info']) ?>
+        </p>
+        <table class="table table-bordered">
+            <thead>
+            <tr>
+                <th>№</th>
+                <th>Mahsulot nomi</th>
+                <th>Miqdor</th>
+                <th>Qayerga</th>
+                <th>Chiqim sanasi</th>
+                <th>Chiqim sanasi</th>
+            </tr>
+            </thead>
+            <tbody>
+                <?php $i=1;?>
+            <?php foreach ($data_out as $row): ?>
+                <?php
+                $count = 0;
+                $count = \frontend\models\WarehouseOutput::find()
+                    ->where(['material_id' => $row->id,'status' => 0])
+                    ->count();
+                $style= "";
+                if ($count >= 1) {
+                    $style = ' style="background-color: yellow;"';
+                }
+                ?>
+                <tr >
+                    <td><?echo $i; $i++;?></td>
+
+                    <td <?= $style ?> ><?=  \frontend\models\Materials::findOne($row->material_id)->name ?></td>
+                    <td><?= $row->quantity ?></td>
+                    <td><?= $row->destination ?></td>
+                    <td><?= $row->date_of_exit ?></td>
+                    <td><?= $row->created_at ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
 
 
+<!-- Kirim formasi -->
+<div class="modal fade" id="myModalKirim" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="myModalLabel">Kirim qilish</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
 
+            </div>
+            <div class="modal-body">
+                <?php $form = ActiveForm::begin([
+                    'action' => ['kirim'], // URL-ni ko'rsating
+                    'method' => 'post', // POST metodini qo'llash
+                ]); ?>
+                <div class="form-group">
+                    <?= $form->field($model_input, 'material_id')->dropDownList($tovars, [
+                        'prompt' => 'Укажите Tovar',
+                    ])->label('Tovar') ?>
+                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myModalAddTovar">
+                        +
+                    </button>
+                </div>
 
+                <div class="form-group">
+                    <?= $form->field($model_input, 'price')->textInput([
+                        'maxlength' => true,
+                        'type' => 'number',
+                        'class' => 'form-control'
+                    ]) ?>
+                </div>
 
+                <div class="form-group">
+                    <?= $form->field($model_input, 'quantity')->textInput([
+                        'maxlength' => true,
+                        'type' => 'number',
+                        'class' => 'form-control'
+                    ]) ?>
+                </div>
 
+                <div class="form-group">
+                    <?= $form->field($model_input, 'date_received')->textInput([
+                        'type' => 'date',
+                        'value' => !empty($model_input->date_received) ? date('Y.m.d', strtotime($model_input->date_received)) : '',
+                        'class' => 'form-control'
+                    ]) ?>
+                </div>
 
+                <div class="form-group">
+                    <?= $form->field($model_input, 'from_name')->textInput([
+                        'maxlength' => true,
+                        'value' => '1',
+                        'class' => 'form-control'
+                    ]) ?>
+                </div>
 
-    <?php // echo $this->render('_search', ['model' => $searchModel]); ?>
+                <div class="form-group">
+                    <?= $form->field($model_input, 'storage_location')->textInput([
+                        'maxlength' => true,
+                        'value' => 'Asosiy ombor',
+                        'class' => 'form-control'
+                    ]) ?>
+                </div>
 
-<!--    --><?//= GridView::widget([
-//        'dataProvider' => $dataProvider,
-//        'filterModel' => $searchModel,
-//        'columns' => [
-//            ['class' => 'yii\grid\SerialColumn'],
-//
-//            'id',
-//            'order_id',
-////            'tovar_id',
-//            [
-//                'attribute'=>'tovar_id',
-//                'filter'=>\yii\helpers\ArrayHelper::map(\frontend\models\Tovar::find()->all(),'id','name'),
-//                'value'=>'tovar.name',
-//                'label'=>'Model'
-//            ],
-//            'soni',
-//            'create_data',
-//
-//            ['class' => 'yii\grid\ActionColumn'],
-//        ],
-//    ]); ?>
+                <div class="form-group">
+                    <?= $form->field($model_input, 'comments')->textarea([
+                        'rows' => 4,
+                        'class' => 'form-control'
+                    ]) ?>
+                </div>
 
+                <div class="form-group text-center">
+                    <?= Html::submitButton('Save', ['class' => 'btn btn-success']) ?>
+                </div>
 
+                <?php ActiveForm::end(); ?>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Chiqim oynasi -->
+<div class="modal fade" id="myModalChiqim" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="myModalLabel">Chiqim qilish</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
 
+            </div>
+            <div class="modal-body">
+                <!-- Formani shu yerga joylashtiring -->
+                <?php $form = ActiveForm::begin([
+                    'action' => ['chiqim'], // URL-ni ko'rsating
+                    'method' => 'post', // POST metodini qo'llash
+                ]); ?>
+
+                <div class="form-group">
+                    <?= $form->field($model_output, 'material_id')->dropDownList($materialsList, [
+                        'prompt' => 'Укажите Tovar',
+                    ])->label('Tovar') ?>
+                </div>
+
+                <div class="form-group">
+                    <?= $form->field($model_output, 'quantity')->textInput([
+                        'maxlength' => true,
+                        'type' => 'number',
+                        'class' => 'form-control'
+                    ]) ?>
+                </div>
+
+                <div class="form-group">
+                    <?= $form->field($model_output, 'date_of_exit')->textInput([
+                        'type' => 'date',
+                        'value' => !empty($model_output->date_received) ? date('Y.m.d', strtotime($model_output->date_received)) : ''
+                    ]) ?>
+                </div>
+
+                <div class="form-group">
+                    <?= $form->field($model_output, 'destination')->dropDownList(['1' => 'Bichish', '2' => 'Tikish', '3' => 'Taqsimot']) ?>
+                </div>
+
+                <div class="form-group">
+                    <?= $form->field($model_output, 'comments')->textarea(['rows' => 6]) ?>
+                </div>
+
+                <div class="form-group text-center">
+                    <?= Html::submitButton('Save', ['class' => 'btn btn-success']) ?>
+                </div>
+
+                <?php ActiveForm::end(); ?>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- yangi mahsulot qo'shish oynasi -->
+<div class="modal fade" id="myModalAddTovar" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="myModalLabel">Chiqim qilish</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Formani shu yerga joylashtiring -->
+                <?php $form = ActiveForm::begin([
+                    'action' => ['add-new-tovar'], // URL-ni ko'rsating
+                    'method' => 'post', // POST metodini qo'llash
+                ]); ?>
+
+                <div class="form-group">
+                    <?= $form->field($model_add_tovar, 'name')->textInput(['maxlength' => true]) ?>
+
+                </div>
+
+                <div class="form-group">
+                    <?= $form->field($model_add_tovar, 'type')->textInput(['maxlength' => true]) ?>
+                </div>
+
+                <div class="form-group">
+                    <?= $form->field($model_add_tovar, 'color')->textInput(['maxlength' => true]) ?>
+                </div>
+
+                <div class="form-group">
+                    <?= $form->field($model_add_tovar, 'unit')->dropDownList(['metr' => 'Metr', 'kg' => 'Kg', 'litr' => 'Litr', 'dona' => 'Dona',], ['prompt' => '']) ?>
+
+                </div>
+
+                <div class="form-group text-center">
+                    <?= Html::submitButton('Save', ['class' => 'btn btn-success']) ?>
+                </div>
+
+                <?php ActiveForm::end(); ?>
+            </div>
+        </div>
+    </div>
 </div>

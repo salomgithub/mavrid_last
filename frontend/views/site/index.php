@@ -32,7 +32,7 @@ $this->title = 'Asosiy bo`lim';
             <div class="col-lg-6 ">
                 <h2 >Omborxona</h2>
 
-                <p><a class="btn btn-lg btn-success" href="?r=qoldiq%2Findex">Omborxona moduli </a></p>
+                <p><a class="btn btn-lg btn-success" href="?r=warehouse">Omborxona moduli </a></p>
 
             </div>
             <div class="col-lg-6">

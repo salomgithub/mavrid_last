@@ -14,14 +14,14 @@ use Yii;
  *
  * @property Tovar $tovar
  */
-class Warehouseout extends \yii\db\ActiveRecord
+class WarehouseOut extends \yii\db\ActiveRecord
 {
     /**
      * {@inheritdoc}
      */
     public static function tableName()
     {
-        return 'warehouseout';
+        return 'warehouse_output';
     }
 
     /**
