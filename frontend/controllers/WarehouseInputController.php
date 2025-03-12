@@ -55,7 +55,10 @@ class WarehouseInputController extends Controller
     public function actionCreate()
     {
         $model = new WarehouseInput();
-        $materials = ArrayHelper::map(Materials::find()->all(), 'id', 'name');
+        //$materials = ArrayHelper::map(Materials::find()->all(), 'id', 'name');
+        $materials = ArrayHelper::map(Materials::find()->all(), 'id', function($model) {
+            return $model->name . ' (' . $model->color . ')';
+        });
         
         if ($model->load(Yii::$app->request->post()) ) {
             $model->summa = $model->price * $model->quantity;
