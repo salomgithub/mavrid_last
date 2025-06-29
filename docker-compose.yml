@@ -24,12 +24,16 @@ services:
 
   mysql:
     image: mysql:5.7
+    container_name: baza
     environment:
-      - MYSQL_ROOT_PASSWORD=verysecret
-      - MYSQL_DATABASE=yii2advanced
-      - MYSQL_USER=yii2advanced
-      - MYSQL_PASSWORD=secret
-
+      - MYSQL_ROOT_PASSWORD=123t
+      - MYSQL_DATABASE=zavod_09_2024
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD="Zzzz+123"
+    ports:
+      - 3306:3306
+    volumes:
+      - ./../my-db:/var/lib/mysql
   #pgsql:
   #  image: postgres:9.5
   #  environment:
