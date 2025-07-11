@@ -2,6 +2,9 @@
 
 namespace frontend\controllers;
 
+use frontend\models\Code;
+use frontend\models\ProductOperationForm;
+use frontend\models\TovarCode;
 use Yii;
 use frontend\models\Tovar;
 use frontend\models\TovarSearch;
@@ -15,9 +18,7 @@ use yii\filters\VerbFilter;
 class TovarController extends Controller
 {
     public $layout = 'admin';
-    /**
-     * {@inheritdoc}
-     */
+
     public function behaviors()
     {
         return [
@@ -30,10 +31,6 @@ class TovarController extends Controller
         ];
     }
 
-    /**
-     * Lists all Tovar models.
-     * @return mixed
-     */
     public function actionIndex()
     {
         $searchModel = new TovarSearch();
@@ -45,24 +42,28 @@ class TovarController extends Controller
         ]);
     }
 
-    /**
-     * Displays a single Tovar model.
-     * @param integer $id
-     * @return mixed
-     * @throws NotFoundHttpException if the model cannot be found
-     */
     public function actionView($id)
     {
+        $model = new ProductOperationForm();
+        $model->product_id = $id;
+
+        $assignedIds = TovarCode::find()
+            ->select('code_id')
+            ->where(['tovar_id' => $id])
+            ->column();
+
+        $model->assigned = $assignedIds;
+
+        $allOps = \yii\helpers\ArrayHelper::map(Code::find()->all(), 'id', 'code');
+
+        $model->available = array_diff_key($allOps, array_flip($assignedIds));
+
         return $this->render('view', [
-            'model' => $this->findModel($id),
+            'tovar' => $this->findModel($id),
+            'model' => $model,
         ]);
     }
 
-    /**
-     * Creates a new Tovar model.
-     * If creation is successful, the browser will be redirected to the 'view' page.
-     * @return mixed
-     */
     public function actionCreate()
     {
         $model = new Tovar();
@@ -76,13 +77,6 @@ class TovarController extends Controller
         ]);
     }
 
-    /**
-     * Updates an existing Tovar model.
-     * If update is successful, the browser will be redirected to the 'view' page.
-     * @param integer $id
-     * @return mixed
-     * @throws NotFoundHttpException if the model cannot be found
-     */
     public function actionUpdate($id)
     {
         $model = $this->findModel($id);
@@ -96,13 +90,6 @@ class TovarController extends Controller
         ]);
     }
 
-    /**
-     * Deletes an existing Tovar model.
-     * If deletion is successful, the browser will be redirected to the 'index' page.
-     * @param integer $id
-     * @return mixed
-     * @throws NotFoundHttpException if the model cannot be found
-     */
     public function actionDelete($id)
     {
         $this->findModel($id)->delete();
@@ -110,13 +97,6 @@ class TovarController extends Controller
         return $this->redirect(['index']);
     }
 
-    /**
-     * Finds the Tovar model based on its primary key value.
-     * If the model is not found, a 404 HTTP exception will be thrown.
-     * @param integer $id
-     * @return Tovar the loaded model
-     * @throws NotFoundHttpException if the model cannot be found
-     */
     protected function findModel($id)
     {
         if (($model = Tovar::findOne($id)) !== null) {
@@ -125,4 +105,84 @@ class TovarController extends Controller
 
         throw new NotFoundHttpException('The requested page does not exist.');
     }
+
+    public function actionAssignOperations($id)
+    {
+        $model = new ProductOperationForm();
+        $model->product_id = $id;
+
+        $assignedIds = TovarCode::find()
+            ->select('code_id')
+            ->where(['tovar_id' => $id])
+            ->column();
+
+        $model->assigned = $assignedIds;
+
+        $allOps = \yii\helpers\ArrayHelper::map(Code::find()->all(), 'id', 'code');
+
+        $model->available = array_diff_key($allOps, array_flip($assignedIds));
+
+        if (Yii::$app->request->isPost) {
+            $post = Yii::$app->request->post('ProductOperationForm');
+            $selectedOps = $post['assigned'] ?? [];
+
+            // remove all old
+            TovarCode::deleteAll(['tovar_id' => $id]);
+
+            // add new
+            foreach ($selectedOps as $opId) {
+                $po = new TovarCode();
+                $po->tovar_id = $id;
+                $po->code_id = $opId;
+                $po->save();
+            }
+
+            return $this->redirect(['view', 'id' => $id]);
+        }
+
+        return $this->render('assign-operations', [
+            'model' => $model,
+        ]);
+    }
+
+    public function actionAssignOp($id)
+    {
+        Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+        $ids = Yii::$app->request->post('ids', []);
+
+        foreach ($ids as $opId) {
+            $exists = TovarCode::find()
+                ->where(['tovar_id' => $id, 'code_id' => $opId])
+                ->exists();
+
+            if (!$exists) {
+                $po = new TovarCode();
+                $po->tovar_id = (int )$id;
+
+                $po->code_id = (int)$opId;
+                if (!$po->save()) {
+                    Yii::error($po->errors, 'assign-op');
+                    return ['success' => false, 'error' => $po->errors];
+                }
+
+            }
+
+        }
+        return ['success' => true];
+    }
+
+    public function actionRemoveOp($id)
+    {
+        Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+        $ids = Yii::$app->request->post('ids', []);
+
+        TovarCode::deleteAll([
+            'tovar_id' => $id,
+            'code_id' => $ids
+        ]);
+
+        return ['success' => true];
+    }
+
+
 }
