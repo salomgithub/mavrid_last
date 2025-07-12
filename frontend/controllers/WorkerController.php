@@ -3,6 +3,7 @@
 namespace frontend\controllers;
 
 use frontend\models\Employees;
+use frontend\models\TovarCode;
 use frontend\models\User;
 use Yii;
 use frontend\models\Worker;
@@ -40,10 +41,6 @@ class WorkerController extends Controller
         ];
     }
 
-    /**
-     * Lists all Worker models.
-     * @return mixed
-     */
     public function actionIndex()
     {
         $this->layout = 'manager';
@@ -56,12 +53,6 @@ class WorkerController extends Controller
         ]);
     }
 
-    /**
-     * Displays a single Worker model.
-     * @param integer $id
-     * @return mixed
-     * @throws NotFoundHttpException if the model cannot be found
-     */
     public function actionView($id)
     {
         $this->layout = 'admin';
@@ -70,11 +61,6 @@ class WorkerController extends Controller
         ]);
     }
 
-    /**
-     * Creates a new Worker model.
-     * If creation is successful, the browser will be redirected to the 'view' page.
-     * @return mixed
-     */
     public function actionCreate()
     {
         $this->layout = 'manager';
@@ -105,7 +91,7 @@ class WorkerController extends Controller
                     $code_narxi = $code->price;
                     $narxi = $code_narxi * $code_soni;
                     $model->narxi = $narxi;
-                    
+
                     if ($model->save() ) {
                         $employee_id = $model->employee_id;
                         $model = new Worker();
@@ -130,9 +116,9 @@ class WorkerController extends Controller
                     $fio = Employees::findOne($employee_id_old);
                     $lastname = $fio->lastname;
                     $firstname = $fio->firstname;
-                    
+
                     $xabar = "<h2 align='center' style='color: red'>Buyurtmani bu operatsiyasida kiritilgan miqdorda xatolik mavjud  <b> ". (isset($lastname)? "yoki ".$lastname:0)." ".$firstname ."</b> tomonida </h2>";
-                } 
+                }
             }
         }
         $employee = Employees::find()->all();
@@ -145,7 +131,7 @@ class WorkerController extends Controller
             'xabar' => $xabar,
         ]);
     }
-    
+
     public function actionList($id)
     {
         $tovars = Orders::findOne($id);
@@ -166,33 +152,44 @@ class WorkerController extends Controller
         } else {
             echo "<option>-</option>";
         }
-        
+
     }
+
+    public function actionListcode($id)
+    {
+        $tovars = Orders::findOne($id);
+        $tovar_id = $tovars->tovar_id;
+        $countCode = Code::find()
+                ->where(['tovar_id'=>$tovar_id])
+                ->count();
+
+        $codes = TovarCode::find()
+                ->where(['tovar_id'=>$tovar_id])
+                ->all();
+
+
+        if ($countCode>0) {
+                echo "<option value=''>....</option>";
+            foreach ($codes as $code) {
+                echo "<option value='".$code->code_id."'>".Code::findOne($code->code_id)->code."</option>";
+            }
+        } else {
+            echo "<option>-</option>";
+        }
+//        echo"<pre>";print_r($codes); die();
+    }
+
     public function actionListtovar($id)
     {
         $tovars = Orders::findOne($id);
         $tovar_id = $tovars->tovar_id;
-        
+
         $tovar_name = Tovar::findOne($tovar_id);
         $tovar_name = $tovar_name->name;
 
         echo "<option value='0'>".$tovar_name."</option>";
-        
-    }
 
-//    public function actionUpdate($id)
-//    {
-//        $this->layout = 'admin';
-//        $model = $this->findModel($id);
-//
-//        if ($model->load(Yii::$app->request->post()) && $model->save()) {
-//            return $this->redirect(['view', 'id' => $model->id]);
-//        }
-//
-//        return $this->render('update', [
-//            'model' => $model,
-//        ]);
-//    }
+    }
 
     public function actionDelete($id)
     {
@@ -209,7 +206,7 @@ class WorkerController extends Controller
         $searchModel = new WorkerrSearch();
         $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
 
-        return $this->render('indexworker', [ 
+        return $this->render('indexworker', [
             'searchModel' => $searchModel,
             'dataProvider' => $dataProvider,
         ]);
@@ -224,6 +221,7 @@ class WorkerController extends Controller
         $this->layout = 'main';
         $model = new Worker();
         $xabar = "";
+        $malumot = "";
 
         if ($model->load(Yii::$app->request->post()) ) {
             $code_id = $model->code_id;
@@ -238,7 +236,7 @@ class WorkerController extends Controller
             if ($employee) {
                 $model->employee_id = $employee->employee_id;
             }
-            
+
             if(($code_tovar_id === $tovar_id) && $code_tovar_id && $tovar_id){
                 $code_soni = $model->soni;
                 $code_by_order = Worker::find()->where(['order_id' => $order_id, 'code_id' => $code_id])->asArray()->all();
@@ -255,7 +253,7 @@ class WorkerController extends Controller
                     $code_narxi = $code->price;
                     $narxi = $code_narxi * $code_soni;
                     $model->narxi = $narxi;
-                    
+
                     if(!$employee->employee_id){
                         return $this->render('create', [
                             'model' => $model,
@@ -269,17 +267,10 @@ class WorkerController extends Controller
                     else echo "Bazaga yozishda xatolik WorkerController(Create action model save not) line:105";
                 }
                 else{
-                    $lastname = '';
-                    $firstname = '';
-                    // $surov = Worker::find()->asArray()->all();
-                    // echo "<pre>";
-                    // var_dump($code_by_order);
-                    // echo "</pre>";
-
-                        $malumot .= $order_id." - ".$code->code."<br> Jami: ".$order_soni."<br>";
+                    $malumot .= $order_id." - ".$code->code."<br> Jami: ".$order_soni."<br>";
                     if (isset($code_by_order)) {
                         foreach ($code_by_order as $key) {
-                            
+
                         $employee_id_old = $key["employee_id"];
                         $fio = Employees::findOne($employee_id_old);
                         $lastname = $fio->lastname;
@@ -293,7 +284,7 @@ class WorkerController extends Controller
 
                     $xabar = "<h4 align='center' style='color: red'>".$malumot."siz ".$order_soni." ta kirita olasiz </h4>";
                     // $xabar = "<h2 align='center' style='color: red'> $order_id -umumiy soni: $order_soni <br> $code->code<br><b> ". ((isset($lastname)) ? $lastname : '0') ." ".((isset($firstname)) ? $firstname : '0' ) ."</b> tomonidan </h2>";
-                } 
+                }
             }
             else die('noqonuniy harakat');
         }

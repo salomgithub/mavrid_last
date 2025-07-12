@@ -23,22 +23,27 @@ $this->params['breadcrumbs'][] = $this->title;
     <?= GridView::widget([
         'dataProvider' => $dataProvider,
         'filterModel' => $searchModel,
-        'columns' => [
+        'columns' => array_filter([
+//        'columns' => [
             ['class' => 'yii\grid\SerialColumn'],
 
             'id',
-            'tovar_id',
+//            'tovar_id',
             [
                 'attribute'=>'tovar_id',
                 'filter'=>ArrayHelper::map(Tovar::find()->all(),'id','name'),
                 'value'=>'tovar.name'
             ],
             'code',
-            'price',
+            (Yii::$app->user->identity->username == 'admin' || Yii::$app->user->identity->username == 'administrator') ? 'price' : null,
+//            'price',
 
             ['class' => 'yii\grid\ActionColumn'],
-        ],
+        ]),
     ]); ?>
-
+    <?php
+    if (Yii::$app->user->can('full-control')) {
+    $role = 'full-control';}
+    ?>
 
 </div>

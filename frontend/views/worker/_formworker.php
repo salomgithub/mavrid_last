@@ -27,7 +27,7 @@ use frontend\models\Code;
     <?php $form = ActiveForm::begin(); ?>
 
     <?= $form->field($model, 'order_id', ['inputOptions'=>['class' =>'form-control', 'tabindex'=>'1']])->textInput(['onchange'=> '
-                $.post( "index.php?r=worker%2Flist&id='.'"+$(this).val(), function (data){
+                $.post( "index.php?r=worker%2Flistcode&id='.'"+$(this).val(), function (data){
                 $("select#worker-code_id").html(data);
             });
             $.post( "index.php?r=worker%2Flisttovar&id='.'"+$(this).val(), function (data){

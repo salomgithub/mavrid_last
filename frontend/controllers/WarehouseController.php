@@ -88,7 +88,7 @@ class WarehouseController extends Controller
             'data_out' => $data_out,
             'materialsList' => $materialsList,
             'tovars' => $tovars,
-            'model' => $model,
+//            'model' => $model,
             'model_input' => $model_input,
             'model_output' => $model_output,
             'model_add_tovar' => $model_add_tovar,
